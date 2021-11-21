@@ -1,0 +1,5 @@
+Vehicle vehicle
+Position pos
+string timestamp
+---
+bool result

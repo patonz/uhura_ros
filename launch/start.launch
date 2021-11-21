@@ -1,0 +1,8 @@
+<launch>
+
+  
+  <node pkg="uhura_ros" name="uhuranode" type="uhura.py" output="screen">
+    
+  </node>
+
+</launch>

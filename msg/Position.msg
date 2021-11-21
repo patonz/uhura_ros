@@ -1,3 +1,4 @@
-int64 x
-int64 y
-int64 z
+string timestamp
+string id
+Coordinates coordinates
+Vehicle vehicle

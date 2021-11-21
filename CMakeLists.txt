@@ -25,6 +25,7 @@ add_message_files(
    FILES
    SendStringData.srv
    SendPositionData.srv
+   SetupNetworkDevice.srv
 #   Service2.srv
  )
 

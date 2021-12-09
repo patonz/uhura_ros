@@ -270,7 +270,7 @@ def log_to_file(data):
 def uhura_server():
 
     # rospy.resolve_name(name)
-    rospy.init_node('uhuranode', anonymous=True)  # turn off anonymous
+    rospy.init_node('uhuranode', anonymous=False)  # turn off anonymous
 
     node_name = rospy.get_name()
     print('node_name: %s ' % (node_name))

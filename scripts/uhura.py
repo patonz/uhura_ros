@@ -52,10 +52,10 @@ def sendBroadCastData(data):
     if  isinstance(data, bytearray):
 
         print("snd %s %s" % (current_message_id,data.decode()))
-        log_to_file("snd %s %s" % (current_message_id,data.decode()))
+       ## log_to_file("snd %s %s" % (current_message_id,data.decode()))
     else:
         print("snd %s %s" % (current_message_id, data))
-        log_to_file("snd %s" % (current_message_id, data))
+       ## log_to_file("snd %s" % (current_message_id, data))
 
 
     global device

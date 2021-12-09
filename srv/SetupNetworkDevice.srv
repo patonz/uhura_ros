@@ -1,4 +1,5 @@
 int64 baudrate
 string port
+string device_name
 ---
 bool result

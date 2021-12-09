@@ -48,7 +48,7 @@ position_msg_rcv_pub = rospy.Publisher(
 
 def sendBroadCastData(data):
     #print(sys.getsizeof(data))
-
+    global current_message_id
     if  isinstance(data, bytearray):
 
         print("snd %s %s" % (current_message_id,data.decode()))
@@ -61,7 +61,7 @@ def sendBroadCastData(data):
     global device
     if setupDone:
         device.send_data_broadcast(data)
-        global current_message_id
+       
         current_message_id += 1
         return True
     else:

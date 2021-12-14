@@ -10,6 +10,8 @@ import sys
 import sched
 import time
 import threading
+from tool_manager import ToolManager
+from message import Message
 from datetime import datetime
 from std_msgs.msg import String
 from digi.xbee.devices import XBeeDevice
@@ -48,25 +50,33 @@ position_msg_rcv_pub = rospy.Publisher(
 
 def sendBroadCastData(data):
     #print(sys.getsizeof(data))
+    global device
     global current_message_id
+    if setupDone is not True:
+        print("call the setup service first, idiot")
+        return False
+
+
+
     if  isinstance(data, bytearray):
 
         print("snd %s %s" % (current_message_id,data.decode()))
-       ## log_to_file("snd %s %s" % (current_message_id,data.decode()))
-    else:
-        print("snd %s %s" % (current_message_id, data))
-       ## log_to_file("snd %s" % (current_message_id, data))
-
-
-    global device
-    if setupDone:
+        log_to_file("snd %s %s" % (current_message_id,data.decode()))
         device.send_data_broadcast(data)
-       
         current_message_id += 1
         return True
-    else:
-        print("call the setup service first, idiot")
-        return False
+    
+    if isinstance(data, Message):
+        data.id = current_message_id
+        print("snd %s %s" % (data.header_to_string(), data.payload_to_string()))
+        log_to_file("snd %s %s" % (data.header_to_string(), data.payload_to_string()))
+
+        encoded_payload= bytearray(data.header_to_string(), encoding='utf-8') + data.payload
+        device.send_data_broadcast(encoded_payload)
+        current_message_id += 1
+        return True
+
+
 
 
 def handle_send_string_data(req):
@@ -147,10 +157,15 @@ def network_test(delay, n_packets, n_bytes, to_mesh):
     global TEST_CURRENT_N_PACKETS
     TEST_CURRENT_N_PACKETS = 0
 
-    global TEST_PAYLOAD
-    bytesstring = bytearray('%s %s %s %s' % (TYPE_MESSAGE_TEST, DEVICE_NAME, TEST_CURRENT_N_PACKETS, int(round(time.time()*1000))), encoding='utf-8')
+    
 
-    TEST_PAYLOAD = bytesstring + bytearray(n_bytes - len(bytesstring))
+  
+    #bytesstring = bytearray('%s %s %s %s' % (TYPE_MESSAGE_TEST, DEVICE_NAME, TEST_CURRENT_N_PACKETS, int(round(time.time()*1000))), encoding='utf-8')
+
+    global TEST_PAYLOAD
+    TEST_PAYLOAD = bytearray(n_bytes)
+
+
 
     if to_mesh:
         sendBroadCastData(encode_test_net_to_string(
@@ -166,7 +181,9 @@ def sendBroadCastDataSchedFun(params):
     global TEST_CURRENT_N_PACKETS
     if TEST_CURRENT_N_PACKETS < TEST_N_PACKETS:
         # print("Sending data to %s >> %s..." % ("BROADCAST", TEST_PAYLOAD))
-        sendBroadCastData(TEST_PAYLOAD)
+        message = Message(TYPE_MESSAGE_TEST, 0, DEVICE_NAME, int(round(time.time()*1000)), TEST_PAYLOAD)
+      
+        sendBroadCastData(message)
         TEST_CURRENT_N_PACKETS = TEST_CURRENT_N_PACKETS+1
         schedule.enter(TEST_DELAY, 1, sendBroadCastDataSchedFun, (params,))
 
@@ -194,8 +211,6 @@ def handle_mesh_test_message(message_array_string):
     print("handle mesh_test called")
     network_test(
         message_array_string[1], message_array_string[2], message_array_string[3], False)
-    # network_test(
-    #    {'delay': message_array_string[1], 'n_packet': message_array_string[2], 'n_bytes': message_array_string[3], 'to_mesh': False})
     return
 
 
@@ -231,9 +246,9 @@ def start_receiving_data():
            # print(packet_dict)
 
             print("rcv %s %s" % (rssi, xbee_message.data.decode()))
-            log_to_file("rcv %s %s" % (rssi, xbee_message.data.decode()))
-            generic_msg_rcv_pub.publish(xbee_message.data.decode())
-            message_array = parse_message(xbee_message.data.decode())
+            log_to_file("rcv %s %s" % (rssi, xbee_message.data.decode(errors='ignore').rstrip('\x00')))
+            generic_msg_rcv_pub.publish(xbee_message.data.decode(errors='ignore'))
+            message_array = parse_message(xbee_message.data.decode(errors='ignore'))
 
             type_message = message_array[0]
             handle_type_message(type_message, message_array)
@@ -250,6 +265,11 @@ def start_receiving_data():
 
 
 def parse_message(message_string):
+
+    splitted = re.split('\s', message_string)
+    message = Message(type, id, source_id, source_timestamp, payload)
+
+
     return re.split("\s", message_string)
 
 
@@ -284,6 +304,9 @@ def uhura_server():
                   TestBroadcastNetwork, handle_network_test)
 
     print("Uhura started")
+
+    tool_manager_instance = ToolManager()
+    print(tool_manager_instance.serial_ports())
     rospy.spin()
 
 

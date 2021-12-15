@@ -75,13 +75,18 @@ def sendBroadCastData(data):
         device.send_data_broadcast(encoded_payload)
         current_message_id += 1
         return True
-
+    
 
 
 
 def handle_send_string_data(req):
-    print("Returning [%s : %s]" % (req.type, req.data))
+    #print("Returning [%s : %s]" % (req.type, req.data))
+    print(req)
 
+    dataBytes = bytes(bytearray(req.data, encoding='utf-8'))
+    print(dataBytes)
+    payload = ToolManager().int_to_bytes(req.type)
+    print(payload)
     return SendStringDataResponse(sendBroadCastData(req.data))
 
 
@@ -243,7 +248,7 @@ def start_receiving_data():
         def data_receive_callback(xbee_message):
             rssi = 0
             packet_dict = xbee_message.to_dict()
-           # print(packet_dict)
+            print(packet_dict)
 
             print("rcv %s %s" % (rssi, xbee_message.data.decode()))
             log_to_file("rcv %s %s" % (rssi, xbee_message.data.decode(errors='ignore').rstrip('\x00')))

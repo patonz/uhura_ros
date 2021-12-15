@@ -40,13 +40,13 @@ class ToolManager:
                 pass
         return result
 
-    def int_to_bytes(x: int) -> bytes:
+    def int_to_bytes(self,x: int) -> bytes:
         return x.to_bytes((x.bit_length() + 7) // 8, 'big')
     
     def int_from_bytes(xbytes: bytes) -> int:
         return int.from_bytes(xbytes, 'big')
 
-    def int_to_bytes(number: int) -> bytes:
+    def int_to_bytes(self,number: int) -> bytes:
         return number.to_bytes(length=(8 + (number + (number < 0)).bit_length()) // 8, byteorder='big', signed=True)
 
     def int_from_bytes(binary_data: bytes) -> Optional[int]:

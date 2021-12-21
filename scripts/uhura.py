@@ -3,6 +3,7 @@
 from __future__ import print_function
 
 # .srv import
+
 from uhura_ros.srv import SendStringData, SendStringDataResponse, SendPositionData, SendPositionDataResponse, SetupNetworkDevice, SetupNetworkDeviceResponse, TestBroadcastNetwork, TestBroadcastNetworkResponse
 import rospy
 import re
@@ -81,13 +82,12 @@ def sendBroadCastData(data):
 
 def handle_send_string_data(req):
     #print("Returning [%s : %s]" % (req.type, req.data))
-    print(req)
+   
 
-    dataBytes = bytes(bytearray(req.data, encoding='utf-8'))
-    print(dataBytes)
-    payload = ToolManager().int_to_bytes(req.type)
-    print(payload)
-    return SendStringDataResponse(sendBroadCastData(req.data))
+    dataByteArray = bytearray(ToolManager().bitstring_to_bytes(req.data))
+    print(dataByteArray)
+    print(len(dataByteArray))
+    return SendStringDataResponse(sendBroadCastData(dataByteArray))
 
 
 def handle_send_position_data(req):
@@ -97,7 +97,7 @@ def handle_send_position_data(req):
     return SendPositionDataResponse(True)
 
 
-def setup(req):
+def setup(req): #todo false return on exce
     print("setup: %s" % req)
 
     if req.baudrate is not None:
@@ -261,7 +261,7 @@ def start_receiving_data():
         device.add_data_received_callback(data_receive_callback)
 
         print("Waiting for data...\n")
-
+ 
     finally:
         if device is not None and device.is_open():
             device.close()

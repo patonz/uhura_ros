@@ -249,7 +249,7 @@ def start_receiving_data():
             rssi = 0
             packet_dict = xbee_message.to_dict()
             print(packet_dict)
-
+            print(len(xbee_message.data))
             print("rcv %s %s" % (rssi, ToolManager().bytes_to_bitstring(xbee_message.data)))
             #log_to_file("rcv %s %s" % (rssi, xbee_message.data.decode(errors='ignore').rstrip('\x00')))
             generic_msg_rcv_pub.publish(ToolManager().bytes_to_bitstring(xbee_message.data))

@@ -37,7 +37,7 @@ schedule = sched.scheduler(time.time, time.sleep)
 
 setupDone = False
 baudrate = 9600
-port = "ttyUSB0"
+port = None
 DEVICE_NAME = "bee_n"
 
 device = None
@@ -81,11 +81,11 @@ def sendBroadCastData(data):
 
 
 def handle_send_string_data(req):
-    print(req.data)
+    
     dataByteArray = bytearray(ToolManager().bitstring_to_bytes(req.data))
-    print(dataByteArray)
-    print(len(dataByteArray))
-     ########################################################### CHECK IF SIMULATION
+
+
+     ########################################################### CHECK IF SIMULATION @tiz
     # TODO FIX IT
     global run_type, uav_name
     if run_type == "simulation":
@@ -113,24 +113,26 @@ def setup(req): #todo false return on exce
         return SetupNetworkDeviceResponse(True)
     ############################################################
     print("setup: %s" % req)
-    if req.baudrate is not None:
-        baudrate = req.baudrate
-    else:
-        print("baudrate not found")
 
-    if req.port is not None:
-        port = req.port
-    else:
-        print("port not found")
-
-    if req.port is not None:
+    if req.device_name is not None:
         global DEVICE_NAME
         DEVICE_NAME = req.device_name
     else:
         print('device_name not found')
 
-    global device
-    device = XBeeDevice(port, baudrate)
+    global device, port
+    for port_free in ToolManager().serial_ports():
+        try: 
+            device = XBeeDevice(port_free, baudrate)
+            device.open()
+            port = port_free
+            break
+        except :
+            continue
+
+
+
+
     global setupDone
     setupDone = True
 
@@ -256,19 +258,23 @@ def start_receiving_data():
     global device
     try:
 
-        device.open()
+        #device.open()
 
         def data_receive_callback(xbee_message):
             rssi = 0
             packet_dict = xbee_message.to_dict()
-            print("RICEVUTOOOOOOOOOOOOOOOOOOOOOOOOOO")
-            print(packet_dict)
-            print(len(xbee_message.data))
-            print("rcv %s %s" % (rssi, ToolManager().bytes_to_bitstring(xbee_message.data)))
-            #log_to_file("rcv %s %s" % (rssi, xbee_message.data.decode(errors='ignore').rstrip('\x00')))
+          
+            #print(packet_dict)  #debug mode
+
+            ## format: type rssi sender len payloadbits
+            print("rcv %s %s %s" % (rssi, xbee_message.remote_device, len(xbee_message.data)))
             generic_msg_rcv_pub.publish(ToolManager().bytes_to_bitstring(xbee_message.data))
+
+
+            log_to_file("rcv %s %s %s" % (rssi, xbee_message.remote_device, len(xbee_message.data)))
+            #log_to_file("rcv %s %s" % (rssi, xbee_message.data.decode(errors='ignore').rstrip('\x00')))
+
             message_array = parse_message(xbee_message.data.decode(errors='ignore'))
-            print("------------------------------------------------------")
             type_message = message_array[0]
             handle_type_message(type_message, message_array)
 
@@ -278,9 +284,11 @@ def start_receiving_data():
  
     finally:
         if device is not None and device.is_open():
-            device.close()
-
-        device.open()
+            
+            #device.close()
+            pass
+    
+        #device.open()
 
 
 def parse_message(message_string):
@@ -302,18 +310,24 @@ def encode_test_net_to_string(delay, n_packets, n_bytes):
 
 def log_to_file(data):
 
-    with open(NAME_FILE, 'a') as f:
-        print(data, file=f)
-
+    try:
+        with open(NAME_FILE, 'a') as f:
+            print(data, file=f)
+    except:
+        print('err')
     return
 def uhura_server():
     # rospy.resolve_name(name)
-    global uav_name, run_type
+    global uav_name, run_type, baudrate
     rospy.init_node('uhuranode', anonymous=False)  # turn off anonymous
     node_name = rospy.get_name()
     print(node_name)
     uav_name = rospy.get_param("~UAV_NAME")
     run_type = rospy.get_param("~RUN_TYPE")
+    baudrate = rospy.get_param("~baudrate")
+
+
+
     print('node_name: %s ' % (node_name))
     rospy.Service('%s/send_string_data' % (node_name),SendStringData, handle_send_string_data)
     rospy.Service('%s/send_position_data' % (node_name), SendPositionData, handle_send_position_data)

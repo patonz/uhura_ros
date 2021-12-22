@@ -83,7 +83,7 @@ def sendBroadCastData(data):
 def handle_send_string_data(req):
     #print("Returning [%s : %s]" % (req.type, req.data))
    
-
+    print(req.data)
     dataByteArray = bytearray(ToolManager().bitstring_to_bytes(req.data))
     print(dataByteArray)
     print(len(dataByteArray))

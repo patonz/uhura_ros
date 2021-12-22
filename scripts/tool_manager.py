@@ -56,4 +56,7 @@ class ToolManager:
         return int(s, 2).to_bytes((len(s) + 7) // 8, byteorder='big')
 
     def bytes_to_bitstring(self, s: bytes):
-        return ''.join(format(ord(byte), '08b') for byte in s)
+
+        string = s.hex()
+    
+        return ''.join(format(ord(byte), '08b') for byte in string)

@@ -61,8 +61,8 @@ def sendBroadCastData(data):
 
     if  isinstance(data, bytearray):
 
-        print("snd %s %s" % (current_message_id,data.decode()))
-        log_to_file("snd %s %s" % (current_message_id,data.decode()))
+        #print("snd %s %s" % (current_message_id,data.decode()))
+        #log_to_file("snd %s %s" % (current_message_id, ToolManager().bytes_to_bitstring(data)))
         device.send_data_broadcast(data)
         current_message_id += 1
         return True
@@ -250,9 +250,9 @@ def start_receiving_data():
             packet_dict = xbee_message.to_dict()
             print(packet_dict)
 
-            print("rcv %s %s" % (rssi, xbee_message.data.decode()))
-            log_to_file("rcv %s %s" % (rssi, xbee_message.data.decode(errors='ignore').rstrip('\x00')))
-            generic_msg_rcv_pub.publish(xbee_message.data.decode(errors='ignore'))
+            print("rcv %s %s" % (rssi, ToolManager().bytes_to_bitstring(xbee_message.data)))
+            #log_to_file("rcv %s %s" % (rssi, xbee_message.data.decode(errors='ignore').rstrip('\x00')))
+            generic_msg_rcv_pub.publish(ToolManager().bytes_to_bitstring(xbee_message.data))
             message_array = parse_message(xbee_message.data.decode(errors='ignore'))
 
             type_message = message_array[0]

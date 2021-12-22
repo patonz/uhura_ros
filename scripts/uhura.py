@@ -44,9 +44,9 @@ device = None
 
 current_message_id = 0
 generic_msg_rcv_pub = rospy.Publisher(
-    'message_received', String, queue_size=10)
+    'uhuranode/message_received', String, queue_size=10)
 position_msg_rcv_pub = rospy.Publisher(
-    'position_message_received', Position, queue_size=10)
+    'uhuranodeposition_message_received', Position, queue_size=10)
 
 
 def sendBroadCastData(data):

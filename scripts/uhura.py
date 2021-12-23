@@ -77,6 +77,7 @@ list_names = ["uav1", "uav2", "uav3"]
 # topic names
 generic_msg_rcv_pub = None
 position_msg_rcv_pub = None
+bits_string_msg_rcv_pub = None
 
 
 def sendBroadCastData(data):
@@ -125,7 +126,7 @@ def handle_send_string_data(req):
     return SendStringDataResponse(sendBroadCastData(message))
 
 # sen string service request, turn off the real send if on simulation.
-def handle_send_bitsstring_data(req):
+def handle_send_bits_string_data(req):
 
     dataByteArray = bytearray(ToolManager().bitstring_to_bytes(req.data))
 
@@ -136,7 +137,7 @@ def handle_send_bitsstring_data(req):
         for uav in list_names:
             if uav == uav_name:
                 continue
-            tmp = rospy.Publisher('/%s%s/message_received' %
+            tmp = rospy.Publisher('/%s%s/receive_bits_string_data' %
                                   (uav, '/uhuranode'), String, queue_size=10)
             tmp.publish(req.data)
         return SendStringDataResponse(True)
@@ -314,7 +315,7 @@ def start_receiving_data():
 
             rospy.loginfo("rcv %s %s %s" %
                           (rssi, xbee_message.remote_device, len(xbee_message.data)))
-            generic_msg_rcv_pub.publish(
+            bits_string_msg_rcv_pub.publish(
                 ToolManager().bytes_to_bitstring(xbee_message.data))
 
             toolManager.log_to_file("rcv %s %s %s" % (
@@ -380,8 +381,8 @@ def uhura_server():
 
     rospy.Service('%s/send_string_data' % (node_name),
                   SendStringData, handle_send_string_data)
-    rospy.Service('%s/send_bitstring_data' % (node_name),
-                  SendBitsStringData, handle_send_bitsstring_data)
+    rospy.Service('%s/send_bits_string_data' % (node_name),
+                  SendBitsStringData, handle_send_bits_string_data)
     rospy.Service('%s/send_position_data' % (node_name),
                   SendPositionData, handle_send_position_data)
     rospy.Service('%s/setup_network_device' %
@@ -392,6 +393,8 @@ def uhura_server():
     global generic_msg_rcv_pub, position_msg_rcv_pub
     generic_msg_rcv_pub = rospy.Publisher(
         '%s/message_received' % (node_name), String, queue_size=10)
+    bits_string_msg_rcv_pub = rospy.Publisher(
+        '%s/receive_bits_string_data' % (node_name), String, queue_size=10)
     position_msg_rcv_pub = rospy.Publisher(
         '%s/position_message_received' % (node_name), Position, queue_size=10)
 

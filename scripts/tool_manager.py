@@ -1,15 +1,13 @@
 import sys
 import glob
 import serial
+import logging
+import rospy
 from typing import Optional
 
 class ToolManager:
-
-    def __init__(self):
-        pass
-
-
-
+    def __init__(self):  
+            pass
 
 
     def serial_ports(self):
@@ -56,5 +54,8 @@ class ToolManager:
         return int(s, 2).to_bytes((len(s) + 7) // 8, byteorder='big')
 
     def bytes_to_bitstring(self, s: bytes):
-    
         return  ''.join(format(byte, '08b') for byte in s)
+
+    def set_rospy_log_lvl(self,log_level):
+        logger = logging.getLogger('rosout')
+        logger.setLevel(rospy.impl.rosout._rospy_to_logging_levels[log_level])

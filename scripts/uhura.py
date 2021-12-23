@@ -1,64 +1,94 @@
 #!/usr/bin/env python
-
+"""Uhura module
+"""
 from __future__ import print_function
 
-# .srv import
-
-from uhura_ros.srv import SendStringData, SendStringDataResponse, SendPositionData, SendPositionDataResponse, SetupNetworkDevice, SetupNetworkDeviceResponse, TestBroadcastNetwork, TestBroadcastNetworkResponse
-from uhura_ros.msg import Position, Vehicle, Coordinates
-
-from tool_manager import ToolManager
-from message import Message
-
+import re
+import sched
+import sys
+import threading
+import time
 from datetime import datetime
-from std_msgs.msg import String
-from digi.xbee.devices import XBeeDevice
 
 import rospy
-import re
-import sys
-import sched
-import time
-import threading
+from digi.xbee.devices import XBeeDevice
+from std_msgs.msg import String
+from uhura_ros.msg import Coordinates, Position, Vehicle
+# .srv import
+from uhura_ros.srv import (SendBitsStringData, SendBitsStringDataResponse,
+                           SendPositionData, SendPositionDataResponse,
+                           SendStringData, SendStringDataResponse,
+                           SetupNetworkDevice, SetupNetworkDeviceResponse,
+                           TestBroadcastNetwork, TestBroadcastNetworkResponse)
+from message import Message
+from tool_manager import ToolManager
+
+__author__ = "Patonz91"
+__copyright__ = "Copyright (c) 2021 Leonardo Montecchiari"
+__credits__ = ["Leonardo Patonz Montecchiari"]
+__license__ = "MIT"
+__version__ = "beta"
+__maintainer__ = "Patonz91"
+__email__ = "patonz91@gmail.com"
+__status__ = "Dev"
 
 
-# type id_message id_device timestamp
-
+# custom service message types
 TYPE_MESSAGE_POS = 'pos'
 TYPE_MESSAGE_TEST_NET_MESH = 'mesh_test'
 TYPE_MESSAGE_TEST = 'test'
+TYPE_MESSAGE_STRING = 'str'
 
+# ToolManager global instance
 toolManager = None
 
-
+# file_log name setup
 START_TIMESTAMP = int(round(time.time()*1000))
 current_date = datetime.now()
 string_date_time = current_date.strftime("%d-%m-%Y_%H-%H%M-%S")
 NAME_FILE = 'net-test_%s.txt' % string_date_time
+
+
+## test mesh setup params##
 TEST_N_PACKETS = 0
 TEST_PAYLOAD = bytearray(256)
 TEST_DELAY = 1
 TEST_CURRENT_N_PACKETS = 0
 schedule = sched.scheduler(time.time, time.sleep)
 
+## device setup params ##
 debug_mode = None
 setupDone = False
 baudrate = 9600
 port = None
 DEVICE_NAME = "bee_n"
 
+# XBeeDevice instance
 device = None
 
+# global sent messages counter
 current_message_id = 0
+
+# simulation vars @tiziano
 uav_name = None
 run_type = None
+list_names = ["uav1", "uav2", "uav3"]
+
+# topic names
 generic_msg_rcv_pub = None
 position_msg_rcv_pub = None
-list_names = ["uav1", "uav2", "uav3"]
 
 
 def sendBroadCastData(data):
-    # print(sys.getsizeof(data))
+    """sendBroadCastData can accept Message or bytearray types
+
+    Args:
+        data (Message): Custom Message with headers and some helper method
+        data (bytearray): row data
+
+    Returns:
+        bool: ack
+    """
     global device
     global current_message_id
     if setupDone is not True:
@@ -67,8 +97,10 @@ def sendBroadCastData(data):
 
     if isinstance(data, bytearray):
 
-        #print("snd %s %s" % (current_message_id,data.decode()))
-        #log_to_file("snd %s %s" % (current_message_id, ToolManager().bytes_to_bitstring(data)))
+        rospy.loginfo("snd %s %s" % (current_message_id,
+                      ToolManager().bytes_to_bitstring(data)))
+        toolManager.log_to_file("snd %s %s" % (
+            current_message_id, ToolManager().bytes_to_bitstring(data)))
         device.send_data_broadcast(data)
         current_message_id += 1
         return True
@@ -77,8 +109,8 @@ def sendBroadCastData(data):
         data.id = current_message_id
         rospy.loginfo("snd %s %s" %
                       (data.header_to_string(), data.payload_to_string()))
-        log_to_file("snd %s %s" %
-                    (data.header_to_string(), data.payload_to_string()))
+        toolManager.log_to_file("snd %s %s" %
+                                (data.header_to_string(), data.payload_to_string()))
 
         encoded_payload = bytearray(
             data.header_to_string(), encoding='utf-8') + data.payload
@@ -88,6 +120,12 @@ def sendBroadCastData(data):
 
 
 def handle_send_string_data(req):
+    message = Message(TYPE_MESSAGE_STRING, current_message_id, DEVICE_NAME, int(round(time.time()*1000)), req.data)
+    
+    return SendStringDataResponse(sendBroadCastData(message))
+
+# sen string service request, turn off the real send if on simulation.
+def handle_send_bitsstring_data(req):
 
     dataByteArray = bytearray(ToolManager().bitstring_to_bytes(req.data))
 
@@ -103,9 +141,12 @@ def handle_send_string_data(req):
             tmp.publish(req.data)
         return SendStringDataResponse(True)
     ############################################################
-    return SendStringDataResponse(sendBroadCastData(dataByteArray))
+    return SendBitsStringDataResponse(sendBroadCastData(dataByteArray))
 
 
+
+
+# service request for position custom message
 def handle_send_position_data(req):
     global current_message_id
     req.pos.id = current_message_id
@@ -113,6 +154,7 @@ def handle_send_position_data(req):
     return SendPositionDataResponse(True)
 
 
+# setup service handler
 def setup(req):  # todo false return on exce
     # CHECK IF SIMULATION
     global run_type
@@ -127,6 +169,7 @@ def setup(req):  # todo false return on exce
     else:
         rospy.logerr('device_name not found')
 
+    # check free ports and test it for the xbee device, then bind
     global device, port
     for port_free in ToolManager().serial_ports():
         try:
@@ -145,15 +188,13 @@ def setup(req):  # todo false return on exce
     start_receiving_data()
     return SetupNetworkDeviceResponse(True)
 
-
+## test mesh functions ###
 def thread_func(name):
     schedule.run()
 
 
 def handle_network_test(req):
-
     network_test(req.delay, req.n_packets, req.n_bytes, req.to_mesh)
-
     return TestBroadcastNetworkResponse(True)
 
 
@@ -181,8 +222,6 @@ def network_test(delay, n_packets, n_bytes, to_mesh):
     global TEST_CURRENT_N_PACKETS
     TEST_CURRENT_N_PACKETS = 0
 
-    #bytesstring = bytearray('%s %s %s %s' % (TYPE_MESSAGE_TEST, DEVICE_NAME, TEST_CURRENT_N_PACKETS, int(round(time.time()*1000))), encoding='utf-8')
-
     global TEST_PAYLOAD
     TEST_PAYLOAD = bytearray(n_bytes)
 
@@ -199,15 +238,16 @@ def sendBroadCastDataSchedFun(params):
 
     global TEST_CURRENT_N_PACKETS
     if TEST_CURRENT_N_PACKETS < TEST_N_PACKETS:
-        # print("Sending data to %s >> %s..." % ("BROADCAST", TEST_PAYLOAD))
         message = Message(TYPE_MESSAGE_TEST, 0, DEVICE_NAME,
                           int(round(time.time()*1000)), TEST_PAYLOAD)
 
         sendBroadCastData(message)
         TEST_CURRENT_N_PACKETS = TEST_CURRENT_N_PACKETS+1
         schedule.enter(TEST_DELAY, 1, sendBroadCastDataSchedFun, (params,))
+#############################
 
 
+### message type handlers #####
 def handle_pos_message(message_array_string):
     rospy.logdebug("handle pos called")
     pos = Position()
@@ -252,9 +292,15 @@ def handle_type_message(type_message, message_array_string):
 
     func = switcher.get(type_message, lambda: 'message type not found')
     func(message_array_string)
+#######################
 
 
 def start_receiving_data():
+    """starts the xbee callback for data rcv
+
+       will create a Message() if is a utf-8 **uhura** format string
+          # format: type rssi sender len payloadbits
+    """
     global device
     try:
 
@@ -264,17 +310,15 @@ def start_receiving_data():
             rssi = 0
             packet_dict = xbee_message.to_dict()
 
-            # print(packet_dict)  #debug mode
+            rospy.logdebug(packet_dict)  # debug mode
 
-            # format: type rssi sender len payloadbits
             rospy.loginfo("rcv %s %s %s" %
                           (rssi, xbee_message.remote_device, len(xbee_message.data)))
             generic_msg_rcv_pub.publish(
                 ToolManager().bytes_to_bitstring(xbee_message.data))
 
-            log_to_file("rcv %s %s %s" % (
+            toolManager.log_to_file("rcv %s %s %s" % (
                 rssi, xbee_message.remote_device, len(xbee_message.data)))
-            #log_to_file("rcv %s %s" % (rssi, xbee_message.data.decode(errors='ignore').rstrip('\x00')))
 
             message_array = parse_message(
                 xbee_message.data.decode(errors='ignore'))
@@ -294,6 +338,7 @@ def start_receiving_data():
         # device.open()
 
 
+## uhura message helper functions ##
 def parse_message(message_string):
 
     splitted = re.split('\s', message_string)
@@ -309,16 +354,7 @@ def encode_position_to_string(pos: Position):
 
 def encode_test_net_to_string(delay, n_packets, n_bytes):
     return '%s %s %s %s %s' % (TYPE_MESSAGE_TEST_NET_MESH, delay, n_packets, n_bytes, 1)
-
-
-def log_to_file(data):
-
-    try:
-        with open(NAME_FILE, 'a') as f:
-            print(data, file=f)
-    except:
-        rospy.logerr('err')
-    return
+####################################
 
 
 def uhura_server():
@@ -341,9 +377,11 @@ def uhura_server():
 
     node_name = rospy.get_name()
     rospy.loginfo('node_name: %s ' % (node_name))
-    
+
     rospy.Service('%s/send_string_data' % (node_name),
                   SendStringData, handle_send_string_data)
+    rospy.Service('%s/send_bitstring_data' % (node_name),
+                  SendBitsStringData, handle_send_bitsstring_data)
     rospy.Service('%s/send_position_data' % (node_name),
                   SendPositionData, handle_send_position_data)
     rospy.Service('%s/setup_network_device' %

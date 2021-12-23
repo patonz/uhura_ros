@@ -10,6 +10,14 @@ class ToolManager:
             pass
 
 
+    def log_to_file(self,data):
+        try:
+            with open(NAME_FILE, 'a') as f:
+                print(data, file=f)
+        except:
+            rospy.logerr('err')
+        return
+
     def serial_ports(self):
         """ Lists serial port names
 

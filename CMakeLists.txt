@@ -30,6 +30,7 @@ add_message_files(
    SendPositionData.srv
    SetupNetworkDevice.srv
    TestBroadcastNetwork.srv
+   SendBitsStringData.srv
 #   Service2.srv
  )
 

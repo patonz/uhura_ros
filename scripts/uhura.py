@@ -11,6 +11,7 @@ import time
 from datetime import datetime
 
 import rospy
+import serial
 from digi.xbee.devices import XBeeDevice
 from std_msgs.msg import String
 from uhura_ros.msg import Coordinates, Position, Vehicle
@@ -20,6 +21,7 @@ from uhura_ros.srv import (SendBitsStringData, SendBitsStringDataResponse,
                            SendStringData, SendStringDataResponse,
                            SetupNetworkDevice, SetupNetworkDeviceResponse,
                            TestBroadcastNetwork, TestBroadcastNetworkResponse)
+
 from message import Message
 from tool_manager import ToolManager
 
@@ -172,15 +174,37 @@ def setup(req):  # todo false return on exce
 
     # check free ports and test it for the xbee device, then bind
     global device, port
+    rospy.logdebug("finding the Xbee Device port...")
     for port_free in ToolManager().serial_ports():
         try:
+            rospy.logdebug("port %s open" % port_free)
+
+            ser = serial.Serial(port_free, 9600, timeout=1)
+            
+            ser.close() #close any other old serial connection
+            ser.open() 
+            time.sleep(1)
+            rospy.logdebug('sending ENTER char')
+            ser.write(b'\r') # mock an ENTER action
+            time.sleep(1)
+            rospy.logdebug('sending B char')
+            ser.write(b'B') # activate the B - Bypass Mode
+            ser.close() #close for the Xbee normal usage
+            time.sleep(1)
             device = XBeeDevice(port_free, baudrate)
             device.open()
+            
             port = port_free
+
+            rospy.logdebug("device found on %s" % port_free)
             break
         except:
+            rospy.logdebug("port %s its not a Xbee device" % port_free)
             continue
-
+    
+    if port is None :
+        rospy.logerr("Xbee Device Not Found")
+        return SetupNetworkDeviceResponse(False)
     global setupDone
     setupDone = True
 

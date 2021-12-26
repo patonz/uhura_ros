@@ -74,7 +74,8 @@ current_message_id = 0
 # simulation vars @tiziano
 uav_name = None
 run_type = None
-list_names = ["uav1", "uav2", "uav3","uav4", "uav5", "uav6","uav7", "uav8", "uav9", "uav10"]
+list_names = ["uav1", "uav2", "uav3", "uav4",
+              "uav5", "uav6", "uav7", "uav8", "uav9", "uav10"]
 
 # topic names
 generic_msg_rcv_pub = None
@@ -123,45 +124,43 @@ def sendBroadCastData(data):
 
 
 def handle_send_string_data(req):
-    message = Message(TYPE_MESSAGE_STRING, current_message_id, DEVICE_NAME, int(round(time.time()*1000)), req.data)
-    
+    message = Message(TYPE_MESSAGE_STRING, current_message_id,
+                      DEVICE_NAME, int(round(time.time()*1000)), req.data)
+
     return SendStringDataResponse(sendBroadCastData(message))
 
 # sen string service request, turn off the real send if on simulation.
+
+
 def handle_send_bits_string_data(req):
 
     dataByteArray = bytearray(ToolManager().bitstring_to_bytes(req.data))
-
 
     # CHECK IF SIMULATION @tiz
     # TODO FIX IT
     global run_type, uav_name
     if run_type == "simulation":
 
-        rospy.logdebug("[simulated] bit string len %s: %s" % (len(req.data),req.data))
+        rospy.logdebug("[simulated] bit string len %s: %s" %
+                       (len(req.data), req.data))
         encodedString = toolManager.bitstring_to_bytes(req.data)
-        rospy.logdebug("[simulated] encoded bits string to bytes: %s"% (encodedString))
+        rospy.logdebug(
+            "[simulated] encoded bits string to bytes: %s" % (encodedString))
         decodedString = toolManager.bytes_to_bitstring(encodedString)
-        rospy.logdebug("[simulated] decode bytes to bits string len %s : %s"% (len(decodedString),decodedString))
+        rospy.logdebug("[simulated] decode bytes to bits string len %s : %s" % (
+            len(decodedString), decodedString))
 
         for uav in list_names:
             if uav == uav_name:
                 continue
 
-           
-
             tmp_publisher = rospy.Publisher('/%s%s/receive_bits_string_data' %
-                                  (uav, '/uhuranode'), String, queue_size=10)
-            
-
-
+                                            (uav, '/uhuranode'), String, queue_size=10)
 
             tmp_publisher.publish(decodedString)
         return SendBitsStringDataResponse(True)
     ############################################################
     return SendBitsStringDataResponse(sendBroadCastData(dataByteArray))
-
-
 
 
 # service request for position custom message
@@ -195,20 +194,20 @@ def setup(req):  # todo false return on exce
             rospy.logdebug("port %s open" % port_free)
 
             ser = serial.Serial(port_free, 9600, timeout=1)
-            
-            ser.close() #close any other old serial connection
-            ser.open() 
+
+            ser.close()  # close any other old serial connection
+            ser.open()
             time.sleep(1)
             rospy.logdebug('sending ENTER char')
-            ser.write(b'\r') # mock an ENTER action
+            ser.write(b'\r')  # mock an ENTER action
             time.sleep(1)
             rospy.logdebug('sending B char')
-            ser.write(b'B') # activate the B - Bypass Mode
-            ser.close() #close for the Xbee normal usage
+            ser.write(b'B')  # activate the B - Bypass Mode
+            ser.close()  # close for the Xbee normal usage
             time.sleep(1)
             device = XBeeDevice(port_free, baudrate)
             device.open()
-            
+
             port = port_free
 
             rospy.logdebug("device found on %s" % port_free)
@@ -216,8 +215,8 @@ def setup(req):  # todo false return on exce
         except:
             rospy.logdebug("port %s its not a Xbee device" % port_free)
             continue
-    
-    if port is None :
+
+    if port is None:
         rospy.logerr("Xbee Device Not Found")
         return SetupNetworkDeviceResponse(False)
     global setupDone
@@ -229,6 +228,8 @@ def setup(req):  # todo false return on exce
     return SetupNetworkDeviceResponse(True)
 
 ## test mesh functions ###
+
+
 def thread_func(name):
     schedule.run()
 

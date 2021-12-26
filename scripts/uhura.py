@@ -74,7 +74,7 @@ current_message_id = 0
 # simulation vars @tiziano
 uav_name = None
 run_type = None
-list_names = ["uav1", "uav2", "uav3"]
+list_names = ["uav1", "uav2", "uav3","uav4", "uav5", "uav6","uav7", "uav8", "uav9", "uav10"]
 
 # topic names
 generic_msg_rcv_pub = None
@@ -132,17 +132,32 @@ def handle_send_bits_string_data(req):
 
     dataByteArray = bytearray(ToolManager().bitstring_to_bytes(req.data))
 
+
     # CHECK IF SIMULATION @tiz
     # TODO FIX IT
     global run_type, uav_name
     if run_type == "simulation":
+
+        rospy.logdebug("[simulated] bit string len %s: %s" % (len(req.data),req.data))
+        encodedString = toolManager.bitstring_to_bytes(req.data)
+        rospy.logdebug("[simulated] encoded bits string to bytes: %s"% (encodedString))
+        decodedString = toolManager.bytes_to_bitstring(encodedString)
+        rospy.logdebug("[simulated] decode bytes to bits string len %s : %s"% (len(decodedString),decodedString))
+
         for uav in list_names:
             if uav == uav_name:
                 continue
-            tmp = rospy.Publisher('/%s%s/receive_bits_string_data' %
+
+           
+
+            tmp_publisher = rospy.Publisher('/%s%s/receive_bits_string_data' %
                                   (uav, '/uhuranode'), String, queue_size=10)
-            tmp.publish(req.data)
-        return SendStringDataResponse(True)
+            
+
+
+
+            tmp_publisher.publish(decodedString)
+        return SendBitsStringDataResponse(True)
     ############################################################
     return SendBitsStringDataResponse(sendBroadCastData(dataByteArray))
 
